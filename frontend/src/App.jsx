@@ -1,144 +1,178 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect } from "react";
+
+// --- ICONS ---
+const UsersIcon = () => (
+  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" /></svg>
+);
+const TrashIcon = () => (
+  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+);
 
 function App() {
-  // --- 1. STATE MANAGEMENT ---
-  const [students, setStudents] = useState([])
-  
-  // New State for the Form Inputs
-  const [formData, setFormData] = useState({
-    name: "",
-    student_id: "",
-    department: ""
-  })
+  const [students, setStudents] = useState([]);
+  const [formData, setFormData] = useState({ name: "", student_id: "", department: "" });
 
-  // --- 2. LOAD DATA ON STARTUP ---
-  useEffect(() => {
-    fetchStudents()
-  }, [])
+  useEffect(() => { fetchStudents(); }, []);
 
-  // --- 3. API FUNCTIONS ---
-  
-  // GET: Fetch the list
   const fetchStudents = async () => {
     try {
-      const response = await fetch("http://127.0.0.1:8000/students/")
-      const data = await response.json()
-      setStudents(data)
-    } catch (error) {
-      console.error("Error fetching students:", error)
-    }
-  }
+      const res = await fetch("http://127.0.0.1:8000/students/");
+      const data = await res.json();
+      setStudents(data);
+    } catch (error) { console.error(error); }
+  };
 
-  // POST: Send new student to backend
   const handleSubmit = async (e) => {
-    e.preventDefault() // Stop the page from reloading
-    
-    // Check if fields are not empty
-    if (!formData.name || !formData.student_id || !formData.department) {
-        alert("Please fill in all fields")
-        return
-    }
-
+    e.preventDefault();
+    if (!formData.name || !formData.student_id || !formData.department) return;
     try {
-      const response = await fetch("http://127.0.0.1:8000/students/", {
+      await fetch("http://127.0.0.1:8000/students/", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify(formData) // Convert JS object to JSON text
-      })
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(formData),
+      });
+      fetchStudents();
+      setFormData({ name: "", student_id: "", department: "" });
+    } catch (error) { console.error(error); }
+  };
 
-      if (response.ok) {
-        // If successful:
-        fetchStudents() // 1. Refresh the list immediately
-        setFormData({ name: "", student_id: "", department: "" }) // 2. Clear the form
-      } else {
-        alert("Failed to add student")
-      }
-    } catch (error) {
-      console.error("Error adding student:", error)
-    }
-  }
+  const handleDelete = async (id) => {
+    if (!confirm("Delete this student?")) return;
+    try {
+      await fetch(`http://127.0.0.1:8000/students/${id}`, { method: "DELETE" });
+      fetchStudents();
+    } catch (error) { console.error(error); }
+  };
 
-  // Helper to update state when user types
-  const handleChange = (e) => {
-    const { name, value } = e.target
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }))
-  }
-
-  // --- 4. THE UI (HTML) ---
   return (
-    <div style={{ maxWidth: "800px", margin: "0 auto", padding: "20px", fontFamily: "Arial" }}>
-      <h1 style={{ textAlign: "center", color: "#eae4e4ff" }}>🎓 Smart Campus Portal</h1>
+    <div className="flex min-h-screen bg-gray-50 font-sans">
+      
+      {/* SIDEBAR */}
+      <aside className="w-64 bg-slate-900 text-white flex flex-col shadow-xl">
+        <div className="p-6 border-b border-slate-800">
+          <h1 className="text-2xl font-bold text-blue-400 tracking-tight">🎓 SmartCampus</h1>
+          <p className="text-xs text-slate-400 mt-1">University Management</p>
+        </div>
+        <nav className="flex-1 p-4 space-y-2">
+          <div className="flex items-center gap-3 px-4 py-3 bg-blue-600 rounded-lg text-white cursor-pointer transition shadow-lg shadow-blue-900/20">
+            <UsersIcon />
+            <span className="font-medium">Students</span>
+          </div>
+          <div className="flex items-center gap-3 px-4 py-3 text-slate-400 hover:bg-slate-800 hover:text-white rounded-lg cursor-pointer transition">
+            <span>📚</span>
+            <span className="font-medium">Courses</span>
+          </div>
+          <div className="flex items-center gap-3 px-4 py-3 text-slate-400 hover:bg-slate-800 hover:text-white rounded-lg cursor-pointer transition">
+            <span>⚙️</span>
+            <span className="font-medium">Settings</span>
+          </div>
+        </nav>
+        <div className="p-4 border-t border-slate-800">
+          <div className="text-xs text-slate-500 text-center">v1.0.0 Beta</div>
+        </div>
+      </aside>
 
-      {/* --- THE FORM --- */}
-      <div style={{ background: "#070707ff", padding: "50px", borderRadius: "8px", marginBottom: "30px" }}>
-        <h3>Register New Student</h3>
-        <form onSubmit={handleSubmit} style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
-          
-          <input 
-            type="text" 
-            name="name" 
-            placeholder="Student Name" 
-            value={formData.name}
-            onChange={handleChange}
-            style={{ padding: "8px", flex: "1" }}
-          />
-          
-          <input 
-            type="number" 
-            name="student_id" 
-            placeholder="ID (e.g. 2024001)" 
-            value={formData.student_id}
-            onChange={handleChange}
-            style={{ padding: "8px", width: "150px" }}
-          />
-          
-          <input 
-            type="text" 
-            name="department" 
-            placeholder="Department (CSE)" 
-            value={formData.department}
-            onChange={handleChange}
-            style={{ padding: "8px", width: "150px" }}
-          />
+      {/* MAIN CONTENT Area */}
+      <main className="flex-1 p-8 overflow-y-auto">
+        
+        {/* Header */}
+        <header className="flex justify-between items-center mb-8">
+          <div>
+            <h2 className="text-3xl font-bold text-slate-800">Student Directory</h2>
+            <p className="text-slate-500 mt-1">Manage student registrations and academic records.</p>
+          </div>
+          <div className="bg-white px-4 py-2 rounded-full shadow-sm border border-gray-200 text-sm text-slate-600">
+            Current Session: <span className="font-semibold text-blue-600">Spring 2026</span>
+          </div>
+        </header>
 
-          <button 
-            type="submit" 
-            style={{ padding: "8px 16px", background: "#007bff", color: "white", border: "none", cursor: "pointer" }}
-          >
-            Add Student
-          </button>
-        </form>
-      </div>
+        {/* SECTION 1: ADD STUDENT FORM */}
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-8">
+          <h3 className="text-lg font-semibold text-slate-800 mb-4 border-b border-gray-100 pb-2">Register New Student</h3>
+          <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+            <div>
+              <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Full Name</label>
+              <input 
+                className="w-full px-4 py-2 bg-gray-50 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition"
+                type="text" placeholder="e.g. John Doe" 
+                value={formData.name} onChange={(e) => setFormData({...formData, name: e.target.value})} 
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Student ID</label>
+              <input 
+                className="w-full px-4 py-2 bg-gray-50 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition"
+                type="number" placeholder="e.g. 2024001" 
+                value={formData.student_id} onChange={(e) => setFormData({...formData, student_id: e.target.value})} 
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Department</label>
+              <select 
+                className="w-full px-4 py-2 bg-gray-50 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition"
+                value={formData.department} onChange={(e) => setFormData({...formData, department: e.target.value})}
+              >
+                <option value="">Select Dept</option>
+                <option value="CSE">CSE</option>
+                <option value="ENTC">ENTC</option>
+                <option value="IT">IT</option>
+                <option value="MECH">MECH</option>
+              </select>
+            </div>
+            <button type="submit" className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-6 rounded-lg transition shadow-md hover:shadow-lg active:scale-95 transform">
+              + Add Student
+            </button>
+          </form>
+        </div>
 
-      {/* --- THE TABLE --- */}
-      <h3>Student Directory</h3>
-      <table border="1" cellPadding="10" style={{ borderCollapse: "collapse", width: "100%" }}>
-        <thead>
-          <tr style={{ background: "#070606ff" }}>
-            <th>ID</th>
-            <th>Name</th>
-            <th>Student ID</th>
-            <th>Department</th>
-          </tr>
-        </thead>
-        <tbody>
-          {students.map((student) => (
-            <tr key={student.id}>
-              <td>{student.id}</td>
-              <td>{student.name}</td>
-              <td>{student.student_id}</td>
-              <td>{student.department}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+        {/* SECTION 2: TABLE */}
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+          <table className="w-full text-left border-collapse">
+            <thead>
+              <tr className="bg-slate-50 border-b border-gray-200 text-xs uppercase text-slate-500 font-semibold tracking-wider">
+                <th className="px-6 py-4">ID</th>
+                <th className="px-6 py-4">Name</th>
+                <th className="px-6 py-4">Student ID</th>
+                <th className="px-6 py-4">Department</th>
+                <th className="px-6 py-4 text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-100">
+              {students.map((student) => (
+                <tr key={student.id} className="hover:bg-blue-50 transition duration-150">
+                  <td className="px-6 py-4 text-slate-500">#{student.id}</td>
+                  <td className="px-6 py-4 font-medium text-slate-900">{student.name}</td>
+                  <td className="px-6 py-4 text-slate-600 font-mono text-sm">{student.student_id}</td>
+                  <td className="px-6 py-4">
+                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 border border-blue-200">
+                      {student.department}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4 text-right">
+                    <button 
+                      onClick={() => handleDelete(student.id)}
+                      className="text-slate-400 hover:text-red-600 hover:bg-red-50 p-2 rounded-full transition"
+                      title="Delete Student"
+                    >
+                      <TrashIcon />
+                    </button>
+                  </td>
+                </tr>
+              ))}
+              {students.length === 0 && (
+                <tr>
+                  <td colSpan="5" className="px-6 py-10 text-center text-slate-400">
+                    No students found. Add one above!
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+
+      </main>
     </div>
-  )
+  );
 }
 
-export default App
+export default App;
