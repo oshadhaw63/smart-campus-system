@@ -4,13 +4,21 @@ from sqlmodel import SQLModel, Field, create_engine, Session, select
 from fastapi.middleware.cors import CORSMiddleware
 
 # 1. THE DATABASE SETUP
-# This creates a file named "database.db" in your folder.
-# Later, we replace this URL with the PostgreSQL URL.
-sqlite_file_name = "database.db"
-sqlite_url = f"sqlite:///{sqlite_file_name}"
+# ... imports ...
 
-# The "Engine" is the car engine that drives the connection to the database.
-engine = create_engine(sqlite_url)
+# --- OLD SQLITE CONFIG (Commented out) ---
+# sqlite_file_name = "database.db"
+# sqlite_url = f"sqlite:///{sqlite_file_name}"
+# engine = create_engine(sqlite_url)
+
+# --- NEW POSTGRESQL CONFIG ---
+# PASTE YOUR SUPABASE URL INSIDE THE QUOTES BELOW
+# IMPORTANT: Replace [YOUR-PASSWORD] with the real password you saved earlier.
+DATABASE_URL = "postgresql://postgres.YOUR_USER:n6zFAgdgguc29DrW@db.jrcyxcrqpvvbeziauifi.supabase.co:5432/postgres"
+
+# We add 'sslmode=require' for security when talking to cloud DBs
+engine = create_engine(DATABASE_URL, echo=True)
+
 
 # 2. THE MODEL (The Blueprint)
 # table=True tells SQLModel: "Create a real table in the database for this"
