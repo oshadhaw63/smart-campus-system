@@ -16,6 +16,12 @@ class Student(SQLModel, table=True):
     student_id: int
     department: str
 
+class Course(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    name: str
+    code: str      # e.g., "CS2012"
+    credits: int   # e.g., 3
+
 # 3. CREATE TABLES
 def create_db_and_tables():
     SQLModel.metadata.create_all(engine)
@@ -72,15 +78,15 @@ def delete_student(student_id: int, session: Session = Depends(get_session)):
 
 @app.get("/stats")
 def get_stats(session: Session = Depends(get_session)):
-    # 1. Get total count
     total_students = len(session.exec(select(Student)).all())
+    total_courses = len(session.exec(select(Course)).all()) # New!
     
-    # 2. Get counts by department (Simple version)
     cse_count = len(session.exec(select(Student).where(Student.department == "CSE")).all())
     entc_count = len(session.exec(select(Student).where(Student.department == "ENTC")).all())
     
     return {
         "total": total_students,
+        "courses": total_courses, # New!
         "cse": cse_count,
         "entc": entc_count,
         "other": total_students - (cse_count + entc_count)
