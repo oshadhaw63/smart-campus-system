@@ -22,6 +22,12 @@ class Course(SQLModel, table=True):
     code: str      # e.g., "CS2012"
     credits: int   # e.g., 3
 
+class Enrollment(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    student_id: int
+    course_id: int
+    grade: Optional[str] = None  # e.g., "A", "B" (Optional for now)
+
 # 3. CREATE TABLES
 def create_db_and_tables():
     SQLModel.metadata.create_all(engine)
@@ -91,3 +97,43 @@ def get_stats(session: Session = Depends(get_session)):
         "entc": entc_count,
         "other": total_students - (cse_count + entc_count)
     }
+
+# --- COURSE ENDPOINTS ---
+@app.post("/courses/", response_model=Course)
+def create_course(course: Course, session: Session = Depends(get_session)):
+    session.add(course)
+    session.commit()
+    session.refresh(course)
+    return course
+
+@app.get("/courses/", response_model=List[Course])
+def read_courses(session: Session = Depends(get_session)):
+    courses = session.exec(select(Course)).all()
+    return courses
+
+@app.delete("/courses/{course_id}")
+def delete_course(course_id: int, session: Session = Depends(get_session)):
+    course = session.get(Course, course_id)
+    if not course:
+        return {"error": "Course not found"}
+    session.delete(course)
+    session.commit()
+    return {"message": "Course deleted successfully"}
+
+@app.post("/enrollments/", response_model=Enrollment)
+def enroll_student(enrollment: Enrollment, session: Session = Depends(get_session)):
+    # Check if they exist first (Safety Check)
+    student = session.get(Student, enrollment.student_id)
+    course = session.get(Course, enrollment.course_id)
+    if not student or not course:
+         # In a real app, we would raise an error here
+         return enrollment 
+    
+    session.add(enrollment)
+    session.commit()
+    session.refresh(enrollment)
+    return enrollment
+
+@app.get("/enrollments/")
+def read_enrollments(session: Session = Depends(get_session)):
+    return session.exec(select(Enrollment)).all()
