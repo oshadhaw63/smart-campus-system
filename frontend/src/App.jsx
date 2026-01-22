@@ -102,13 +102,26 @@ function App() {
               </form>
             </div>
             <div className="card">
-              <Table headers={["Name", "ID", "Dept", "Action"]}>
+              <Table headers={["Name", "ID", "Dept", "ID Card", "Action"]}>
                 {students.map(s => (
                   <tr key={s.id} className="row">
-                    <td className="cell">{s.name}</td>
-                    <td className="cell">{s.student_id}</td>
+                    <td className="cell font-medium">{s.name}</td>
+                    <td className="cell text-slate-600">{s.student_id}</td>
                     <td className="cell"><span className="badge">{s.department}</span></td>
-                    <td className="cell right"><button onClick={() => handleDelete('students', s.id)} className="btn-delete"><TrashIcon /></button></td>
+                    {/* NEW: QR CODE COLUMN */}
+                    <td className="cell">
+                      <img 
+                        src={`http://127.0.0.1:8000/static/student_${s.id}.png`} 
+                        alt="QR" 
+                        className="w-10 h-10 border rounded hover:scale-150 transition cursor-pointer"
+                        title="Scan for details"
+                        // Fallback if image doesn't exist yet (for old students)
+                        onError={(e) => {e.target.style.display='none'}} 
+                      />
+                    </td>
+                    <td className="cell right">
+                        <button onClick={() => handleDelete('students', s.id)} className="btn-delete"><TrashIcon /></button>
+                    </td>
                   </tr>
                 ))}
               </Table>

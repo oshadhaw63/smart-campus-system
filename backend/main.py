@@ -2,6 +2,9 @@ from typing import Optional, List
 from fastapi import FastAPI, Depends
 from sqlmodel import SQLModel, Field, create_engine, Session, select
 from fastapi.middleware.cors import CORSMiddleware
+import os
+import qrcode
+from fastapi.staticfiles import StaticFiles
 
 # 1. THE DATABASE SETUP (Back to Local SQLite)
 sqlite_file_name = "database.db"
@@ -40,6 +43,8 @@ def get_session():
 # 5. THE APP
 app = FastAPI()
 
+app.mount("/static", StaticFiles(directory="static"), name="static")
+
 origins = [
     "http://localhost:5173",
     "http://127.0.0.1:5173",
@@ -63,9 +68,22 @@ def read_root():
 
 @app.post("/students/", response_model=Student)
 def create_student(student: Student, session: Session = Depends(get_session)):
+    # 1. Save to Database
     session.add(student)
     session.commit()
     session.refresh(student)
+
+    # 2. Generate QR Code
+    # The data inside the QR code (e.g., "Student: Janith, ID: 2024001")
+    qr_data = f"Name: {student.name}\nID: {student.student_id}\nDept: {student.department}"
+
+    # Create the image
+    img = qrcode.make(qr_data)
+
+    # Save it to the 'static' folder using their unique Database ID
+    file_path = f"static/student_{student.id}.png"
+    img.save(file_path)
+
     return student
 
 @app.get("/students/", response_model=List[Student])
