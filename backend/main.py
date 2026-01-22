@@ -5,6 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 import os
 import qrcode
 from fastapi.staticfiles import StaticFiles
+from datetime import datetime
 
 # 1. THE DATABASE SETUP (Back to Local SQLite)
 sqlite_file_name = "database.db"
@@ -30,6 +31,13 @@ class Enrollment(SQLModel, table=True):
     student_id: int
     course_id: int
     grade: Optional[str] = None  # e.g., "A", "B" (Optional for now)
+
+class Attendance(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    student_id: int
+    date: str       # e.g., "2026-01-22"
+    time: str       # e.g., "10:30:00"
+    status: str     # "Present"
 
 # 3. CREATE TABLES
 def create_db_and_tables():
@@ -155,3 +163,32 @@ def enroll_student(enrollment: Enrollment, session: Session = Depends(get_sessio
 @app.get("/enrollments/")
 def read_enrollments(session: Session = Depends(get_session)):
     return session.exec(select(Enrollment)).all()
+
+# --- ATTENDANCE ENDPOINTS ---
+@app.post("/scan/{student_id}")
+def mark_attendance(student_id: int, session: Session = Depends(get_session)):
+    student = session.get(Student, student_id)
+    if not student:
+        return {"error": "Student not found", "name": "Unknown"}
+    
+    # Get current time
+    now = datetime.now()
+    
+    # Create Log
+    log = Attendance(
+        student_id=student_id,
+        date=now.strftime("%Y-%m-%d"),
+        time=now.strftime("%H:%M:%S"),
+        status="Present"
+    )
+    
+    session.add(log)
+    session.commit()
+    
+    return {"message": "Attendance Marked", "name": student.name, "time": log.time}
+
+@app.get("/attendance/")
+def read_attendance(session: Session = Depends(get_session)):
+    # Sort by ID descending (newest first) - simple way
+    logs = session.exec(select(Attendance)).all()
+    return logs[::-1] # Reverse list to show newest on top
