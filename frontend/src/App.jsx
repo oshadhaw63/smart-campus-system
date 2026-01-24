@@ -9,48 +9,100 @@ const BookIcon = () => <svg className="w-5 h-5" fill="none" stroke="currentColor
 const LinkIcon = () => <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" /></svg>;
 const ClockIcon = () => <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>;
 const TrashIcon = () => <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>;
+const LockIcon = () => <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>;
 
 function App() {
+  // --- AUTH STATE ---
+  const [token, setToken] = useState(localStorage.getItem("token") || "");
+  const [loginForm, setLoginForm] = useState({ username: "", password: "" });
+  const [loginError, setLoginError] = useState("");
+
+  // App State
   const [activeTab, setActiveTab] = useState("dashboard");
   const [viewIdCard, setViewIdCard] = useState(null);
-
   const [stats, setStats] = useState({ total: 0, courses: 0 });
   const [students, setStudents] = useState([]);
   const [courses, setCourses] = useState([]);
   const [enrollments, setEnrollments] = useState([]);
   const [attendance, setAttendance] = useState([]);
-
+  
   // Forms
   const [studentForm, setStudentForm] = useState({ name: "", student_id: "", department: "" });
   const [courseForm, setCourseForm] = useState({ name: "", code: "", credits: 3 });
   const [enrollForm, setEnrollForm] = useState({ student_id: "", course_id: "" });
-  
-  // SCANNER STATE
   const [scanId, setScanId] = useState(""); 
 
-  useEffect(() => { fetchData(); }, []);
+  useEffect(() => { 
+    fetchData(); 
+  }, []);
 
   const fetchData = async () => {
     try {
-      const [s, c, e, a, st] = await Promise.all([
-        fetch("http://127.0.0.1:8000/students/").then(r => r.json()),
-        fetch("http://127.0.0.1:8000/courses/").then(r => r.json()),
-        fetch("http://127.0.0.1:8000/enrollments/").then(r => r.json()),
-        fetch("http://127.0.0.1:8000/attendance/").then(r => r.json()),
-        fetch("http://127.0.0.1:8000/stats").then(r => r.json())
-      ]);
-      if(Array.isArray(s)) setStudents(s);
-      if(Array.isArray(c)) setCourses(c);
-      if(Array.isArray(e)) setEnrollments(e);
-      if(Array.isArray(a)) setAttendance(a);
-      setStats(st);
-    } catch (err) { console.error(err); }
+      // We use separate fetches so if one fails, others might still work (better debugging)
+      const sRes = await fetch("http://127.0.0.1:8000/students/");
+      const cRes = await fetch("http://127.0.0.1:8000/courses/");
+      const eRes = await fetch("http://127.0.0.1:8000/enrollments/");
+      const aRes = await fetch("http://127.0.0.1:8000/attendance/");
+      const stRes = await fetch("http://127.0.0.1:8000/stats");
+
+      if (sRes.ok) setStudents(await sRes.json());
+      if (cRes.ok) setCourses(await cRes.json());
+      if (eRes.ok) setEnrollments(await eRes.json());
+      if (aRes.ok) setAttendance(await aRes.json());
+      if (stRes.ok) setStats(await stRes.json());
+    } catch (err) { console.error("Error fetching data:", err); }
   };
 
+  // --- LOGIN HANDLER ---
+  const handleLogin = async (e) => {
+    e.preventDefault();
+    setLoginError("");
+
+    const formData = new URLSearchParams();
+    formData.append('username', loginForm.username);
+    formData.append('password', loginForm.password);
+
+    try {
+        const res = await fetch("http://127.0.0.1:8000/token", {
+            method: "POST",
+            headers: { "Content-Type": "application/x-www-form-urlencoded" },
+            body: formData
+        });
+        
+        if (!res.ok) throw new Error("Invalid Credentials");
+        
+        const data = await res.json();
+        setToken(data.access_token);
+        localStorage.setItem("token", data.access_token);
+        setLoginForm({ username: "", password: "" });
+        setActiveTab("dashboard");
+    } catch (err) {
+        setLoginError("Login Failed: Incorrect username or password.");
+    }
+  };
+
+  const handleLogout = () => {
+      setToken("");
+      localStorage.removeItem("token");
+      setActiveTab("dashboard");
+  };
+
+  // --- SUBMIT HANDLERS ---
   const handleGenericSubmit = async (endpoint, data, resetFn, resetData) => {
-    await fetch(`http://127.0.0.1:8000/${endpoint}/`, {
-      method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(data)
+    if (!token) { alert("Please log in first!"); return; }
+    
+    const res = await fetch(`http://127.0.0.1:8000/${endpoint}/`, {
+      method: "POST", 
+      headers: { 
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}` 
+      }, 
+      body: JSON.stringify(data)
     });
+
+    if (res.status === 401) { alert("Session expired."); handleLogout(); return; }
+    if (!res.ok) { alert("Error submitting data"); return; }
+
     resetFn(resetData);
     fetchData();
   };
@@ -61,51 +113,37 @@ function App() {
     handleGenericSubmit("enrollments", enrollForm, setEnrollForm, { student_id: "", course_id: "" });
   };
 
-  // --- CRITICAL FIX HERE ---
-  const handleScan = async (e, directId) => {
-    // 1. Safety Check: If triggered by a button click (event exists), stop refresh
-    if (e && e.preventDefault) e.preventDefault(); 
-    
-    // 2. Determine which ID to use: The camera's ID OR the typed input
-    const idToScan = directId || scanId;
-    
-    if (!idToScan) {
-        alert("Please enter or scan an ID first.");
-        return;
-    }
+  const handleDelete = async (endpoint, id) => {
+    if (!token) { alert("Access Denied: Only Admins can delete."); return; }
+    if (!confirm("Are you sure?")) return;
 
-    console.log("Sending to backend:", idToScan); // Debugging
+    const res = await fetch(`http://127.0.0.1:8000/${endpoint}/${id}`, { 
+        method: "DELETE",
+        headers: { "Authorization": `Bearer ${token}` }
+    });
+
+    if (res.status === 401) { alert("Session expired."); handleLogout(); return; }
+    fetchData();
+  };
+
+  const handleScan = async (e, directId) => {
+    if (e && e.preventDefault) e.preventDefault(); 
+    const idToScan = directId || scanId;
+    if (!idToScan) return;
 
     try {
         const res = await fetch(`http://127.0.0.1:8000/scan/${idToScan}`, { method: "POST" });
         const data = await res.json();
-        
-        if(data.error) {
-            alert("Error: " + data.error);
-        } else {
-            // Success!
-            alert(`✅ Marked Present: ${data.name}`);
-            setScanId(""); // Clear the input box
-            fetchData();   // Refresh the log table immediately
-        }
-    } catch (err) {
-        console.error("Scan Error:", err);
-        alert("Failed to connect to server.");
-    }
-  };
-
-  const handleDelete = async (endpoint, id) => {
-    if (!confirm("Are you sure?")) return;
-    await fetch(`http://127.0.0.1:8000/${endpoint}/${id}`, { method: "DELETE" });
-    fetchData();
+        if(data.error) alert("Error: " + data.error);
+        else { alert(`✅ Marked Present: ${data.name}`); setScanId(""); fetchData(); }
+    } catch (err) { alert("Failed to connect."); }
   };
 
   const getStudentName = (id) => students.find(s => s.id === id)?.name || "Unknown";
+  const getCourseName = (id) => courses.find(c => c.id === id)?.name || "Unknown";
   
-  // Chart Data
   const getChartData = () => {
-    const counts = {};
-    students.forEach(s => { counts[s.department] = (counts[s.department] || 0) + 1; });
+    const counts = {}; students.forEach(s => { counts[s.department] = (counts[s.department] || 0) + 1; });
     return Object.keys(counts).map(dept => ({ name: dept, students: counts[dept] }));
   };
 
@@ -116,16 +154,7 @@ function App() {
       {viewIdCard && (
         <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-4 backdrop-blur-sm" onClick={() => setViewIdCard(null)}>
           <div className="bg-white rounded-2xl shadow-2xl overflow-hidden max-w-sm w-full" onClick={e => e.stopPropagation()}>
-            <div className="bg-gradient-to-r from-blue-600 to-blue-800 p-6 text-white text-center">
-              <h2 className="text-2xl font-bold">Smart Campus</h2>
-              <p className="text-blue-100 text-sm uppercase">Official ID</p>
-            </div>
-            <div className="p-8 flex flex-col items-center">
-              <img src={`http://127.0.0.1:8000/static/student_${viewIdCard.id}.png`} alt="QR" className="w-40 h-40 mb-4" />
-              <h3 className="text-2xl font-bold">{viewIdCard.name}</h3>
-              <p className="text-gray-500 mb-2">Internal ID: {viewIdCard.id}</p>
-              <span className="badge">{viewIdCard.department}</span>
-            </div>
+              <img src={`http://127.0.0.1:8000/static/student_${viewIdCard.id}.png`} alt="QR" className="w-full object-contain p-4" />
           </div>
         </div>
       )}
@@ -134,6 +163,9 @@ function App() {
       <aside className="w-64 bg-slate-900 text-white flex flex-col shadow-xl">
         <div className="p-6 border-b border-slate-800">
           <h1 className="text-2xl font-bold text-blue-400">🎓 SmartCampus</h1>
+          <div className="mt-2 text-xs text-slate-500 uppercase font-semibold">
+              {token ? "🟢 Admin Mode" : "⚪ Guest Mode"}
+          </div>
         </div>
         <nav className="flex-1 p-4 space-y-2">
           <NavItem icon={<HomeIcon />} label="Dashboard" active={activeTab === 'dashboard'} onClick={() => setActiveTab("dashboard")} />
@@ -142,102 +174,178 @@ function App() {
           <NavItem icon={<LinkIcon />} label="Enrollments" active={activeTab === 'enrollments'} onClick={() => setActiveTab("enrollments")} />
           <NavItem icon={<ClockIcon />} label="Attendance" active={activeTab === 'attendance'} onClick={() => setActiveTab("attendance")} />
         </nav>
+        
+        {/* LOGIN / LOGOUT */}
+        <div className="p-4 border-t border-slate-800">
+            {token ? (
+                <button onClick={handleLogout} className="w-full bg-red-600 hover:bg-red-700 text-white py-2 rounded-lg text-sm font-semibold transition">Logout</button>
+            ) : (
+                <button onClick={() => setActiveTab("login")} className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-lg text-sm font-semibold transition flex items-center justify-center gap-2"><LockIcon /> Admin Login</button>
+            )}
+        </div>
       </aside>
 
       {/* MAIN CONTENT */}
       <main className="flex-1 p-8 overflow-y-auto">
         <header className="flex justify-between items-center mb-8">
-          <h2 className="text-3xl font-bold text-slate-800 capitalize">{activeTab}</h2>
-          <div className="text-sm text-slate-500">{new Date().toDateString()}</div>
+          <h2 className="text-3xl font-bold text-slate-800 capitalize">{activeTab === 'login' ? 'Admin Access' : activeTab}</h2>
         </header>
 
+        {/* --- LOGIN TAB --- */}
+        {activeTab === 'login' && !token && (
+            <div className="flex justify-center items-center h-[50vh]">
+                <div className="bg-white p-8 rounded-2xl shadow-xl w-full max-w-md border border-gray-100">
+                    <h3 className="text-2xl font-bold text-center mb-6 text-slate-800">System Login</h3>
+                    {loginError && <div className="bg-red-50 text-red-600 p-3 rounded-lg mb-4 text-sm text-center">{loginError}</div>}
+                    <form onSubmit={handleLogin} className="space-y-4">
+                        <div>
+                            <label className="block text-sm font-bold text-gray-500 mb-1">Username</label>
+                            <input className="input" type="text" value={loginForm.username} onChange={e => setLoginForm({...loginForm, username: e.target.value})} placeholder="admin" />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-bold text-gray-500 mb-1">Password</label>
+                            <input className="input" type="password" value={loginForm.password} onChange={e => setLoginForm({...loginForm, password: e.target.value})} placeholder="admin123" />
+                        </div>
+                        <button type="submit" className="w-full bg-blue-600 text-white py-3 rounded-xl font-bold hover:bg-blue-700 shadow-lg shadow-blue-200 transition">Unlock System</button>
+                    </form>
+                    <p className="text-center text-xs text-gray-400 mt-6">Default: admin / admin123</p>
+                </div>
+            </div>
+        )}
+
+        {/* --- DASHBOARD --- */}
         {activeTab === 'dashboard' && (
           <div className="space-y-8">
             <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
               <StatCard label="Total Students" value={stats.total} color="blue" />
               <StatCard label="Total Courses" value={stats.courses} color="green" />
-              <StatCard label="Today's Attendance" value={attendance.length} color="purple" />
+              <StatCard label="Attendance" value={attendance.length} color="purple" />
               <StatCard label="Enrollments" value={enrollments.length} color="orange" />
             </div>
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-              <div className="card h-80 flex flex-col">
-                <h3 className="card-title">Students Distribution</h3>
-                <div className="flex-1 w-full min-h-0">
-                  <ResponsiveContainer width="100%" height="100%">
+            <div className="card h-80">
+                <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={getChartData()}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#eee" />
-                      <XAxis dataKey="name" stroke="#888" />
-                      <YAxis stroke="#888" />
-                      <Tooltip />
-                      <Bar dataKey="students" fill="#3b82f6" radius={[4, 4, 0, 0]}>
-                        {getChartData().map((entry, index) => <Cell key={`cell-${index}`} fill={['#3b82f6', '#8b5cf6', '#10b981', '#f59e0b'][index % 4]} />)}
-                      </Bar>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#eee" />
+                        <XAxis dataKey="name" />
+                        <YAxis />
+                        <Tooltip />
+                        <Bar dataKey="students" fill="#3b82f6" radius={[4, 4, 0, 0]} />
                     </BarChart>
-                  </ResponsiveContainer>
-                </div>
-              </div>
-              <div className="card h-80 overflow-y-auto">
-                <h3 className="card-title">Recent Activity</h3>
-                <div className="space-y-4">
-                   {attendance.slice(0, 5).map(log => (
-                     <div key={log.id} className="flex items-center gap-3 text-sm border-b border-gray-100 pb-2">
-                       <div className="w-2 h-2 rounded-full bg-green-500"></div>
-                       <span className="font-bold text-slate-700">{getStudentName(log.student_id)}</span>
-                       <span className="text-slate-400">marked present at</span>
-                       <span className="font-mono text-slate-500">{log.time}</span>
-                     </div>
-                   ))}
-                </div>
-              </div>
+                </ResponsiveContainer>
             </div>
           </div>
         )}
 
-        {/* ... (Students, Courses, Enrollments Tabs remain same - keeping code concise) ... */}
+        {/* --- STUDENTS --- */}
         {activeTab === 'students' && (
-          <div className="card">
+          <>
+            {token && (
+            <div className="card mb-8">
+              <form onSubmit={(e) => {e.preventDefault(); handleGenericSubmit("students", studentForm, setStudentForm, {name:"", student_id:"", department:""})}} className="form-grid">
+                <input className="input" placeholder="Name" value={studentForm.name} onChange={e => setStudentForm({...studentForm, name: e.target.value})} />
+                <input className="input" placeholder="ID" type="number" value={studentForm.student_id} onChange={e => setStudentForm({...studentForm, student_id: e.target.value})} />
+                <select className="input" value={studentForm.department} onChange={e => setStudentForm({...studentForm, department: e.target.value})}>
+                  <option value="">Dept</option><option>CSE</option><option>ENTC</option><option>IT</option>
+                </select>
+                <button type="submit" className="btn-primary">+ Add</button>
+              </form>
+            </div>
+            )}
+            <div className="card">
               <Table headers={["Name", "ID", "Dept", "Digital ID", "Action"]}>
                 {students.map(s => (
                   <tr key={s.id} className="row">
                     <td className="cell">{s.name}</td>
                     <td className="cell">{s.student_id}</td>
                     <td className="cell"><span className="badge">{s.department}</span></td>
-                    <td className="cell">
-                        <div onClick={() => setViewIdCard(s)} className="cursor-pointer text-blue-500 text-xs hover:underline flex items-center gap-2">
-                             <img src={`http://127.0.0.1:8000/static/student_${s.id}.png`} className="w-8 h-8 rounded border" onError={(e) => {e.target.style.display='none'}} />
-                             View
-                        </div>
+                    <td className="cell"><button onClick={() => setViewIdCard(s)} className="text-blue-500 text-xs hover:underline">View ID</button></td>
+                    <td className="cell right">
+                        {token && <button onClick={() => handleDelete('students', s.id)} className="btn-delete"><TrashIcon /></button>}
                     </td>
-                    <td className="cell right"><button onClick={() => handleDelete('students', s.id)} className="btn-delete"><TrashIcon /></button></td>
                   </tr>
                 ))}
               </Table>
-          </div>
+            </div>
+          </>
         )}
-        {/* Skipping Courses/Enrollments for brevity as they work fine */}
 
+        {/* --- COURSES --- */}
+        {activeTab === 'courses' && (
+           <>
+            {token && (
+            <div className="card mb-8">
+              <form onSubmit={(e) => {e.preventDefault(); handleGenericSubmit("courses", courseForm, setCourseForm, {name:"", code:"", credits:3})}} className="form-grid">
+                <input className="input" placeholder="Course Name" value={courseForm.name} onChange={e => setCourseForm({...courseForm, name: e.target.value})} />
+                <input className="input" placeholder="Code" value={courseForm.code} onChange={e => setCourseForm({...courseForm, code: e.target.value})} />
+                <button type="submit" className="btn-primary">+ Create</button>
+              </form>
+            </div>
+            )}
+            <div className="card">
+              <Table headers={["Course", "Code", "Credits", "Action"]}>
+                {courses.map(c => (
+                  <tr key={c.id} className="row">
+                    <td className="cell">{c.name}</td>
+                    <td className="cell">{c.code}</td>
+                    <td className="cell">{c.credits}</td>
+                    <td className="cell right">
+                        {token && <button onClick={() => handleDelete('courses', c.id)} className="btn-delete"><TrashIcon /></button>}
+                    </td>
+                  </tr>
+                ))}
+              </Table>
+            </div>
+          </>
+        )}
+
+        {/* --- ENROLLMENTS (RESTORED!) --- */}
+        {activeTab === 'enrollments' && (
+          <>
+            {token && (
+            <div className="card mb-8">
+              <form onSubmit={handleEnroll} className="form-grid">
+                <select className="input" value={enrollForm.student_id} onChange={e => setEnrollForm({...enrollForm, student_id: e.target.value})}>
+                  <option value="">Select Student...</option>
+                  {students.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                </select>
+                <select className="input" value={enrollForm.course_id} onChange={e => setEnrollForm({...enrollForm, course_id: e.target.value})}>
+                  <option value="">Select Course...</option>
+                  {courses.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                </select>
+                <button type="submit" className="btn-primary">Enroll</button>
+              </form>
+            </div>
+            )}
+            <div className="card">
+              <Table headers={["Student", "Course", "Status"]}>
+                {enrollments.map(e => (
+                  <tr key={e.id} className="row">
+                    <td className="cell font-bold">{getStudentName(e.student_id)}</td>
+                    <td className="cell text-blue-600">{getCourseName(e.course_id)}</td>
+                    <td className="cell"><span className="badge bg-green-100 text-green-800">Enrolled</span></td>
+                  </tr>
+                ))}
+              </Table>
+            </div>
+          </>
+        )}
+
+        {/* --- ATTENDANCE --- */}
         {activeTab === 'attendance' && (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
-            <div className="space-y-6">
+             <div className="space-y-6">
                  <div className="bg-blue-600 text-white p-6 rounded-xl shadow-lg">
                     <h3 className="text-xl font-bold mb-2">📸 Live Scanner</h3>
-                    <p className="opacity-80 text-sm mb-4">Scan a student ID card.</p>
-                    
-                    {/* CAMERA COMPONENT */}
                     <Scanner onScan={(id) => handleScan(null, id)} />
                  </div>
-
                  <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
-                    <h4 className="text-sm font-bold text-gray-500 uppercase mb-3">Manual Entry</h4>
                     <form onSubmit={(e) => handleScan(e)} className="flex gap-4">
                       <input className="input flex-1" placeholder="Type Internal ID..." value={scanId} onChange={e => setScanId(e.target.value)} />
                       <button type="submit" className="btn-primary">Mark</button>
                     </form>
                  </div>
             </div>
-
             <div className="card h-[500px] overflow-hidden flex flex-col">
-              <div className="flex justify-between items-center mb-4"><h3 className="card-title mb-0">Live Access Log</h3></div>
               <div className="flex-1 overflow-y-auto">
                  <Table headers={["Time", "Student", "Status"]}>
                   {attendance.map(log => (
@@ -252,13 +360,11 @@ function App() {
             </div>
           </div>
         )}
-
       </main>
 
       {/* STYLES */}
       <style>{`
         .card { background: white; padding: 20px; border-radius: 12px; border: 1px solid #e5e7eb; box-shadow: 0 1px 2px rgba(0,0,0,0.05); }
-        .card-title { font-size: 1.1rem; font-weight: 600; color: #1f2937; margin-bottom: 15px; }
         .input { width: 100%; padding: 10px; border: 1px solid #d1d5db; border-radius: 8px; outline: none; }
         .btn-primary { background: #2563eb; color: white; padding: 10px 20px; border-radius: 8px; font-weight: 600; cursor: pointer; }
         .row:hover { background: #f9fafb; }
