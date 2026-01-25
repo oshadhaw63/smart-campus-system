@@ -91,7 +91,9 @@ function App() {
         localStorage.setItem("token", data.access_token);
         setLoginForm({ username: "", password: "" });
         setActiveTab("dashboard");
-    } catch (err) { setLoginError("Login Failed: Incorrect username or password."); }
+    } catch (err) { 
+      console.error("LOGIN ERROR:", err);
+      setLoginError("Login Failed: Incorrect username or password."); }
   };
 
   const handleLogout = () => {
