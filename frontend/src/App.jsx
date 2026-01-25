@@ -38,11 +38,11 @@ function App() {
 
   const fetchData = async () => {
     try {
-      const sRes = await fetch("http://127.0.0.1:8000/students/");
-      const cRes = await fetch("http://127.0.0.1:8000/courses/");
-      const eRes = await fetch("http://127.0.0.1:8000/enrollments/");
-      const aRes = await fetch("http://127.0.0.1:8000/attendance/");
-      const stRes = await fetch("http://127.0.0.1:8000/stats");
+      const sRes = await fetch("https://smart-campus-system.onrender.com/students/");
+      const cRes = await fetch("https://smart-campus-system.onrender.com/courses/");
+      const eRes = await fetch("https://smart-campus-system.onrender.com/enrollments/");
+      const aRes = await fetch("https://smart-campus-system.onrender.com/attendance/");
+      const stRes = await fetch("https://smart-campus-system.onrender.com/stats");
 
       if (sRes.ok) setStudents(await sRes.json());
       if (cRes.ok) setCourses(await cRes.json());
@@ -62,7 +62,7 @@ function App() {
     formData.append('password', loginForm.password);
 
     try {
-        const res = await fetch("http://127.0.0.1:8000/token", {
+        const res = await fetch("https://smart-campus-system.onrender.com/token", {
             method: "POST",
             headers: { "Content-Type": "application/x-www-form-urlencoded" },
             body: formData
@@ -90,7 +90,7 @@ function App() {
   const handleGenericSubmit = async (endpoint, data, resetFn, resetData) => {
     if (!token) { alert("Please log in first!"); return; }
     
-    const res = await fetch(`http://127.0.0.1:8000/${endpoint}/`, {
+    const res = await fetch(`https://smart-campus-system.onrender.com/${endpoint}/`, {
       method: "POST", 
       headers: { 
           "Content-Type": "application/json",
@@ -116,7 +116,7 @@ function App() {
     if (!token) { alert("Access Denied: Only Admins can delete."); return; }
     if (!confirm("Are you sure?")) return;
 
-    const res = await fetch(`http://127.0.0.1:8000/${endpoint}/${id}`, { 
+    const res = await fetch(`https://smart-campus-system.onrender.com/${endpoint}/${id}`, { 
         method: "DELETE",
         headers: { "Authorization": `Bearer ${token}` }
     });
@@ -131,7 +131,7 @@ function App() {
     if (!idToScan) return;
 
     try {
-        const res = await fetch(`http://127.0.0.1:8000/scan/${idToScan}`, { method: "POST" });
+        const res = await fetch(`https://smart-campus-system.onrender.com/scan/${idToScan}`, { method: "POST" });
         const data = await res.json();
         if(data.error) alert("Error: " + data.error);
         else { alert(`✅ Marked Present: ${data.name}`); setScanId(""); fetchData(); }
@@ -153,7 +153,7 @@ function App() {
       {viewIdCard && (
         <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-4 backdrop-blur-sm" onClick={() => setViewIdCard(null)}>
           <div className="bg-white rounded-2xl shadow-2xl overflow-hidden max-w-sm w-full" onClick={e => e.stopPropagation()}>
-              <img src={`http://127.0.0.1:8000/static/student_${viewIdCard.id}.png`} alt="QR" className="w-full object-contain p-4" />
+              <img src={`https://smart-campus-system.onrender.com/static/student_${viewIdCard.id}.png`} alt="QR" className="w-full object-contain p-4" />
           </div>
         </div>
       )}
