@@ -7,11 +7,32 @@ from fastapi.staticfiles import StaticFiles
 import os
 import qrcode
 from datetime import datetime
+import pika
 
 # --- DATABASE SETUP ---
 sqlite_file_name = "database.db"
 sqlite_url = f"sqlite:///{sqlite_file_name}"
 engine = create_engine(sqlite_url, echo=True)
+
+RABBITMQ_URL = "amqps://ftnvthix:EJ74G9eFWRfIpENoNsgTxUAmmxnmdF-3@armadillo.rmq.cloudamqp.com/ftnvthix" 
+
+def publish_message(message: str):
+    try:
+        # Parse the URL
+        params = pika.URLParameters(RABBITMQ_URL)
+        connection = pika.BlockingConnection(params)
+        channel = connection.channel()
+        
+        # Create a queue named 'attendance_emails' if it doesn't exist
+        channel.queue_declare(queue='attendance_emails')
+        
+        # Send the message
+        channel.basic_publish(exchange='', routing_key='attendance_emails', body=message)
+        
+        connection.close()
+        print(f"Sent to RabbitMQ: {message}")
+    except Exception as e:
+        print(f"Failed to send to RabbitMQ: {e}")
 
 # --- MODELS ---
 class Student(SQLModel, table=True):
@@ -179,4 +200,7 @@ def mark_attendance(student_id: int, session: Session = Depends(get_session)):
     log = Attendance(student_id=student_id, date=now.strftime("%Y-%m-%d"), time=now.strftime("%H:%M:%S"), status="Present")
     session.add(log)
     session.commit()
+
+    message_body = f"Notification: {student.name} marked present at {log.time}"
+    publish_message(message_body)
     return {"message": "Attendance Marked", "name": student.name, "time": log.time}
