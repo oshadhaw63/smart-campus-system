@@ -38,7 +38,6 @@ function App() {
 
   const fetchData = async () => {
     try {
-      // We use separate fetches so if one fails, others might still work (better debugging)
       const sRes = await fetch("http://127.0.0.1:8000/students/");
       const cRes = await fetch("http://127.0.0.1:8000/courses/");
       const eRes = await fetch("http://127.0.0.1:8000/enrollments/");
@@ -160,7 +159,7 @@ function App() {
       )}
 
       {/* SIDEBAR */}
-      <aside className="w-64 bg-slate-900 text-white flex flex-col shadow-xl">
+      <aside className="w-64 bg-slate-900 text-white flex flex-col shadow-xl fixed h-full">
         <div className="p-6 border-b border-slate-800">
           <h1 className="text-2xl font-bold text-blue-400">🎓 SmartCampus</h1>
           <div className="mt-2 text-xs text-slate-500 uppercase font-semibold">
@@ -186,7 +185,7 @@ function App() {
       </aside>
 
       {/* MAIN CONTENT */}
-      <main className="flex-1 p-8 overflow-y-auto">
+      <main className="flex-1 ml-64 p-8 overflow-y-auto min-h-screen">
         <header className="flex justify-between items-center mb-8">
           <h2 className="text-3xl font-bold text-slate-800 capitalize">{activeTab === 'login' ? 'Admin Access' : activeTab}</h2>
         </header>
@@ -241,16 +240,29 @@ function App() {
           <>
             {token && (
             <div className="card mb-8">
-              <form onSubmit={(e) => {e.preventDefault(); handleGenericSubmit("students", studentForm, setStudentForm, {name:"", student_id:"", department:""})}} className="form-grid">
-                <input className="input" placeholder="Name" value={studentForm.name} onChange={e => setStudentForm({...studentForm, name: e.target.value})} />
-                <input className="input" placeholder="ID" type="number" value={studentForm.student_id} onChange={e => setStudentForm({...studentForm, student_id: e.target.value})} />
-                <select className="input" value={studentForm.department} onChange={e => setStudentForm({...studentForm, department: e.target.value})}>
-                  <option value="">Dept</option><option>CSE</option><option>ENTC</option><option>IT</option>
-                </select>
-                <button type="submit" className="btn-primary">+ Add</button>
+              <h3 className="text-lg font-semibold mb-4 text-slate-700">Add New Student</h3>
+              {/* LAYOUT FIX: GRID SYSTEM */}
+              <form onSubmit={(e) => {e.preventDefault(); handleGenericSubmit("students", studentForm, setStudentForm, {name:"", student_id:"", department:""})}} 
+                    className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+                <div className="w-full">
+                    <label className="text-xs font-bold text-gray-400 uppercase">Full Name</label>
+                    <input className="input mt-1" placeholder="e.g. John Doe" value={studentForm.name} onChange={e => setStudentForm({...studentForm, name: e.target.value})} />
+                </div>
+                <div className="w-full">
+                    <label className="text-xs font-bold text-gray-400 uppercase">Student ID</label>
+                    <input className="input mt-1" placeholder="e.g. 2024001" type="number" value={studentForm.student_id} onChange={e => setStudentForm({...studentForm, student_id: e.target.value})} />
+                </div>
+                <div className="w-full">
+                    <label className="text-xs font-bold text-gray-400 uppercase">Department</label>
+                    <select className="input mt-1" value={studentForm.department} onChange={e => setStudentForm({...studentForm, department: e.target.value})}>
+                        <option value="">Select Dept</option><option>CSE</option><option>ENTC</option><option>IT</option>
+                    </select>
+                </div>
+                <button type="submit" className="btn-primary w-full h-[46px]">+ Add Student</button>
               </form>
             </div>
             )}
+            
             <div className="card">
               <Table headers={["Name", "ID", "Dept", "Digital ID", "Action"]}>
                 {students.map(s => (
@@ -274,10 +286,18 @@ function App() {
            <>
             {token && (
             <div className="card mb-8">
-              <form onSubmit={(e) => {e.preventDefault(); handleGenericSubmit("courses", courseForm, setCourseForm, {name:"", code:"", credits:3})}} className="form-grid">
-                <input className="input" placeholder="Course Name" value={courseForm.name} onChange={e => setCourseForm({...courseForm, name: e.target.value})} />
-                <input className="input" placeholder="Code" value={courseForm.code} onChange={e => setCourseForm({...courseForm, code: e.target.value})} />
-                <button type="submit" className="btn-primary">+ Create</button>
+              <h3 className="text-lg font-semibold mb-4 text-slate-700">Create New Course</h3>
+              <form onSubmit={(e) => {e.preventDefault(); handleGenericSubmit("courses", courseForm, setCourseForm, {name:"", code:"", credits:3})}} 
+                    className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+                <div className="md:col-span-2">
+                    <label className="text-xs font-bold text-gray-400 uppercase">Course Name</label>
+                    <input className="input mt-1" placeholder="e.g. Data Structures" value={courseForm.name} onChange={e => setCourseForm({...courseForm, name: e.target.value})} />
+                </div>
+                <div>
+                    <label className="text-xs font-bold text-gray-400 uppercase">Course Code</label>
+                    <input className="input mt-1" placeholder="e.g. CS101" value={courseForm.code} onChange={e => setCourseForm({...courseForm, code: e.target.value})} />
+                </div>
+                <button type="submit" className="btn-primary h-[46px]">+ Create</button>
               </form>
             </div>
             )}
@@ -298,21 +318,28 @@ function App() {
           </>
         )}
 
-        {/* --- ENROLLMENTS (RESTORED!) --- */}
+        {/* --- ENROLLMENTS --- */}
         {activeTab === 'enrollments' && (
           <>
             {token && (
             <div className="card mb-8">
-              <form onSubmit={handleEnroll} className="form-grid">
-                <select className="input" value={enrollForm.student_id} onChange={e => setEnrollForm({...enrollForm, student_id: e.target.value})}>
-                  <option value="">Select Student...</option>
-                  {students.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-                </select>
-                <select className="input" value={enrollForm.course_id} onChange={e => setEnrollForm({...enrollForm, course_id: e.target.value})}>
-                  <option value="">Select Course...</option>
-                  {courses.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                </select>
-                <button type="submit" className="btn-primary">Enroll</button>
+              <h3 className="text-lg font-semibold mb-4 text-slate-700">Enroll Student</h3>
+              <form onSubmit={handleEnroll} className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
+                <div>
+                    <label className="text-xs font-bold text-gray-400 uppercase">Select Student</label>
+                    <select className="input mt-1" value={enrollForm.student_id} onChange={e => setEnrollForm({...enrollForm, student_id: e.target.value})}>
+                    <option value="">Select...</option>
+                    {students.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                    </select>
+                </div>
+                <div>
+                    <label className="text-xs font-bold text-gray-400 uppercase">Select Course</label>
+                    <select className="input mt-1" value={enrollForm.course_id} onChange={e => setEnrollForm({...enrollForm, course_id: e.target.value})}>
+                    <option value="">Select...</option>
+                    {courses.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                    </select>
+                </div>
+                <button type="submit" className="btn-primary h-[46px]">Enroll Now</button>
               </form>
             </div>
             )}
@@ -333,19 +360,26 @@ function App() {
         {/* --- ATTENDANCE --- */}
         {activeTab === 'attendance' && (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+             {/* LEFT SIDE: SCANNER */}
              <div className="space-y-6">
                  <div className="bg-blue-600 text-white p-6 rounded-xl shadow-lg">
                     <h3 className="text-xl font-bold mb-2">📸 Live Scanner</h3>
+                    <p className="text-blue-200 text-sm mb-4">Automatically scan student ID cards.</p>
                     <Scanner onScan={(id) => handleScan(null, id)} />
                  </div>
+                 
                  <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
+                    <label className="text-xs font-bold text-gray-400 uppercase mb-2 block">Manual Entry</label>
                     <form onSubmit={(e) => handleScan(e)} className="flex gap-4">
                       <input className="input flex-1" placeholder="Type Internal ID..." value={scanId} onChange={e => setScanId(e.target.value)} />
-                      <button type="submit" className="btn-primary">Mark</button>
+                      <button type="submit" className="btn-primary">Mark Present</button>
                     </form>
                  </div>
             </div>
-            <div className="card h-[500px] overflow-hidden flex flex-col">
+
+            {/* RIGHT SIDE: LOGS */}
+            <div className="card h-[600px] overflow-hidden flex flex-col">
+              <h3 className="text-lg font-bold mb-4 text-slate-800 border-b pb-2">Live Access Log</h3>
               <div className="flex-1 overflow-y-auto">
                  <Table headers={["Time", "Student", "Status"]}>
                   {attendance.map(log => (
@@ -364,12 +398,14 @@ function App() {
 
       {/* STYLES */}
       <style>{`
-        .card { background: white; padding: 20px; border-radius: 12px; border: 1px solid #e5e7eb; box-shadow: 0 1px 2px rgba(0,0,0,0.05); }
-        .input { width: 100%; padding: 10px; border: 1px solid #d1d5db; border-radius: 8px; outline: none; }
-        .btn-primary { background: #2563eb; color: white; padding: 10px 20px; border-radius: 8px; font-weight: 600; cursor: pointer; }
-        .row:hover { background: #f9fafb; }
-        .cell { padding: 12px 20px; border-bottom: 1px solid #f3f4f6; }
-        .badge { padding: 4px 10px; background: #dbeafe; color: #1e40af; border-radius: 20px; font-size: 0.8rem; font-weight: 600; }
+        .card { background: white; padding: 24px; border-radius: 16px; border: 1px solid #e2e8f0; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); }
+        .input { width: 100%; padding: 12px; border: 1px solid #cbd5e1; border-radius: 8px; outline: none; transition: border 0.2s; font-size: 0.95rem; }
+        .input:focus { border-color: #3b82f6; ring: 2px; }
+        .btn-primary { background: #2563eb; color: white; padding: 0 24px; border-radius: 8px; font-weight: 600; cursor: pointer; transition: background 0.2s; }
+        .btn-primary:hover { background: #1d4ed8; }
+        .row:hover { background: #f8fafc; }
+        .cell { padding: 16px 24px; border-bottom: 1px solid #f1f5f9; }
+        .badge { padding: 4px 12px; background: #dbeafe; color: #1e40af; border-radius: 9999px; font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; }
         .right { text-align: right; }
       `}</style>
     </div>
@@ -377,16 +413,16 @@ function App() {
 }
 
 const NavItem = ({ icon, label, active, onClick }) => (
-  <div onClick={onClick} className={`flex items-center gap-3 px-4 py-3 rounded-lg cursor-pointer transition ${active ? 'bg-blue-600 text-white' : 'text-slate-400 hover:bg-slate-800'}`}>
+  <div onClick={onClick} className={`flex items-center gap-3 px-4 py-3 rounded-lg cursor-pointer transition ${active ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/20' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}>
     {icon} <span className="font-medium">{label}</span>
   </div>
 );
 const StatCard = ({ label, value, color }) => {
-    const colors = { blue: "bg-blue-50 text-blue-600", green: "bg-green-50 text-green-600", purple: "bg-purple-50 text-purple-600", orange: "bg-orange-50 text-orange-600" };
-    return <div className={`px-6 py-4 rounded-xl border ${colors[color]} border-opacity-50`}><div className="text-sm uppercase opacity-80">{label}</div><div className="text-3xl font-bold mt-2">{value}</div></div>;
+    const colors = { blue: "bg-blue-50 text-blue-600 border-blue-100", green: "bg-green-50 text-green-600 border-green-100", purple: "bg-purple-50 text-purple-600 border-purple-100", orange: "bg-orange-50 text-orange-600 border-orange-100" };
+    return <div className={`px-6 py-5 rounded-2xl border ${colors[color]}`}><div className="text-xs font-bold uppercase tracking-wider opacity-70 mb-1">{label}</div><div className="text-3xl font-extrabold">{value}</div></div>;
 };
 const Table = ({ headers, children }) => (
-  <table className="w-full text-left border-collapse"><thead className="bg-slate-50 text-xs uppercase text-slate-500 font-semibold"><tr>{headers.map(h => <th key={h} className="px-6 py-4">{h}</th>)}</tr></thead><tbody className="divide-y divide-gray-100">{children}</tbody></table>
+  <table className="w-full text-left border-collapse"><thead className="bg-slate-50 text-xs uppercase text-slate-500 font-bold tracking-wider"><tr>{headers.map(h => <th key={h} className="px-6 py-4">{h}</th>)}</tr></thead><tbody className="divide-y divide-gray-100">{children}</tbody></table>
 );
 
 export default App;
